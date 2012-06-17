@@ -71,7 +71,6 @@ int main(void) {
 
 	DDRD |= (1 << LED1) | (1 << LED2);
 
-	PORTD |=  (1<<PD2);
 	MCUCR = (1 << ISC00);
 	GIMSK |= (1 << INT0);
 
