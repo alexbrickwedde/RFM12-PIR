@@ -22,8 +22,16 @@ void send() {
 	rf12_setbaud(666);
 	rf12_setpower(0, 6);
 
+	unsigned long temp;
 	wdt_reset();
-	uint temp = ((PIND & (1 << PD3)) != 0);
+	if ((PIND & (1 << PD3)) != 0)
+	{
+	  temp = 0xaaaa;
+	}
+	else
+	{
+	  temp = 0;
+	}
 
 	char id[8];
 	char test[32];
