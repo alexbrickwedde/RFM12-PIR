@@ -14,6 +14,8 @@
 
 #define AIRID "0201"
 
+volatile unsigned long PIR = 0;
+
 void send() {
 	wdt_reset();
 	rf12_init();
@@ -24,27 +26,25 @@ void send() {
 
 	unsigned long temp;
 	wdt_reset();
-	if ((PIND & (1 << PD3)) != 0)
-	{
-	  temp = 0xaaaa;
-	}
-	else
-	{
-	  temp = 0;
+	if (PIR != 0) {
+		LED_AN(LED1);
+		LED_AN(LED2);
+		temp = 0xaaaa;
+	} else {
+		LED_AUS(LED1);
+		LED_AUS(LED2);
+		temp = 0;
 	}
 
 	char id[8];
 	char test[32];
 	test[0] = 'M';
 	memcpy(test + 1, &(temp), 2);
-	memcpy(test + 3, id, 8);
-	memcpy(test + 11, &(temp), 2);
-	memcpy(test + 13, id, 8);
+	test[3] = 'M';
+	memcpy(test + 4, &(temp), 2);
 
-	LED_AN(LED1);
 	rf12_txdata(test, 22);
 	wdt_reset();
-	LED_AUS(LED1);
 	rf12_trans(0x8201);
 	wdt_reset();
 	rf12_trans(0x0);
@@ -65,11 +65,29 @@ ISR(INT0_vect)
 {
 	cli();
 	WDTCSR |= _BV(WDIE) | _BV(WDP2) | _BV(WDP1) | _BV(WDP0);
+	if ((PIND & (1 << PD2)) == 0) {
+		PIR = 0;
+		LED_AUS(LED1);
+		LED_AUS(LED2);
+	} else {
+		LED_AN(LED1);
+		LED_AN(LED2);
+		PIR = 1;
+	}
 	WDTcounter = MAXCOUNT;
 	sei();
 }
 
 int main(void) {
+
+	for (int i = 0; i < 10; i++) {
+		_delay_ms(200);
+		LED_AN(LED1);
+		LED_AN(LED2);
+		_delay_ms(200);
+		LED_AUS(LED1);
+		LED_AUS(LED2);
+	}
 
 	cli();
 	wdt_reset();
@@ -77,30 +95,37 @@ int main(void) {
 	WDTCSR |= _BV(WDIE) | _BV(WDP2) | _BV(WDP1) | _BV(WDP0);
 	sei();
 
-	DDRD |= (1 << LED1) | (1 << LED2);
+	DDRD |= (1 << PD4);
+	DDRD |= (1 << PD5);
 
 	MCUCR = (1 << ISC00);
 	GIMSK |= (1 << INT0);
 
 	rf12_preinit(AIRID);
 
+	if ((PIND & (1 << PD2)) == 0) {
+		PIR = 0;
+		LED_AUS(LED1);
+		LED_AUS(LED2);
+	} else {
+		LED_AN(LED1);
+		LED_AN(LED2);
+		PIR = 1;
+	}
+
 	for (;;) {
+
+		wdt_reset();
+
 		if (WDTcounter >= MAXCOUNT) {
-			LED_AN(LED1);
-			LED_AN(LED2);
 			send();
 			WDTcounter = 0;
 		}
-		LED_AUS(LED1);
-		LED_AUS(LED2);
-
 		wdt_reset();
 
 		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 		sleep_enable();
-
 		sleep_cpu ();
 		sleep_disable ();
-		wdt_reset();
 	}
 }
