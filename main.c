@@ -14,7 +14,7 @@
 
 #define AIRID "0201"
 
-volatile unsigned long PIR = 0;
+volatile unsigned long uiPir = 0;
 
 void send() {
 	wdt_reset();
@@ -24,19 +24,15 @@ void send() {
 	rf12_setbaud(666);
 	rf12_setpower(0, 6);
 
-	unsigned long temp;
 	wdt_reset();
-	if (PIR != 0) {
-		LED_AN(LED1);
-		LED_AN(LED2);
+
+	unsigned long temp;
+	if (uiPir != 0) {
 		temp = 0xaaaa;
 	} else {
-		LED_AUS(LED1);
-		LED_AUS(LED2);
 		temp = 0;
 	}
 
-	char id[8];
 	char test[32];
 	test[0] = 'M';
 	memcpy(test + 1, &(temp), 2);
@@ -61,71 +57,82 @@ ISR(WDT_OVERFLOW_vect)
 	sei();
 }
 
-ISR(INT0_vect)
-{
-	cli();
-	WDTCSR |= _BV(WDIE) | _BV(WDP2) | _BV(WDP1) | _BV(WDP0);
-	if ((PIND & (1 << PD2)) == 0) {
-		PIR = 0;
-		LED_AUS(LED1);
-		LED_AUS(LED2);
-	} else {
-		LED_AN(LED1);
-		LED_AN(LED2);
-		PIR = 1;
-	}
-	WDTcounter = MAXCOUNT;
-	sei();
-}
+//ISR(INT0_vect)
+//{
+//	cli();
+//	WDTCSR |= _BV(WDIE) | _BV(WDP2) | _BV(WDP1) | _BV(WDP0);
+//	sei();
+//}
+//
+//ISR(INT1_vect)
+//{
+//	cli();
+//	WDTCSR |= _BV(WDIE) | _BV(WDP2) | _BV(WDP1) | _BV(WDP0);
+//	sei();
+//}
 
 int main(void) {
 
-	for (int i = 0; i < 10; i++) {
-		_delay_ms(200);
-		LED_AN(LED1);
-		LED_AN(LED2);
-		_delay_ms(200);
-		LED_AUS(LED1);
-		LED_AUS(LED2);
-	}
-
 	cli();
 	wdt_reset();
-	wdt_enable (WDTO_1S);
+	wdt_enable (WDTO_2S);
 	WDTCSR |= _BV(WDIE) | _BV(WDP2) | _BV(WDP1) | _BV(WDP0);
 	sei();
 
 	DDRD |= (1 << PD4);
 	DDRD |= (1 << PD5);
 
-	MCUCR = (1 << ISC00);
-	GIMSK |= (1 << INT0);
-
-	rf12_preinit(AIRID);
-
-	if ((PIND & (1 << PD2)) == 0) {
-		PIR = 0;
-		LED_AUS(LED1);
-		LED_AUS(LED2);
-	} else {
-		LED_AN(LED1);
-		LED_AN(LED2);
-		PIR = 1;
-	}
-
-	for (;;) {
+	for (int i = 0; i < 5; i++) {
 
 		wdt_reset();
 
-		if (WDTcounter >= MAXCOUNT) {
-			send();
-			WDTcounter = 0;
+		_delay_ms(200);
+		LED_AN(LED1);
+		LED_AN(LED2);
+
+		_delay_ms(200);
+		LED_AUS(LED1);
+		LED_AUS(LED2);
+	}
+
+	//	MCUCR |= (1 << ISC10);
+	//	GIMSK |= (1 << INT1);
+
+	wdt_reset();
+
+	rf12_preinit(AIRID);
+
+	uiPir = 2;
+
+	for (;;) {
+		wdt_reset();
+
+		int uiNewPir;
+		if ((PIND & (1 << PD3)) == 0) {
+			uiNewPir = 0;
+			LED_AUS(LED1);
+			LED_AUS(LED2);
+		} else {
+			uiNewPir = 1;
+			LED_AN(LED1);
+			LED_AN(LED2);
 		}
+		if (uiPir != uiNewPir) {
+			uiPir = uiNewPir;
+			WDTcounter = 0;
+			send();
+		} else if ((WDTcounter >= MAXCOUNT)) {
+			WDTcounter = 0;
+			send();
+		}
+
 		wdt_reset();
 
 		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 		sleep_enable();
+
 		sleep_cpu ();
 		sleep_disable ();
+		wdt_reset();
 	}
 }

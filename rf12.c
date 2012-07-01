@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
 #include <string.h>
 #include "rf12.h"
 
@@ -66,7 +67,10 @@ void rf12_preinit(const char *AirId)
   sbi(RF_PORT, FSK);
 
   for (unsigned int i = 0; i < 100; i++)
+  {
+	wdt_reset();
     _delay_ms(10); // wait until POR done
+  }
 }
 
 void rf12_init(void)
