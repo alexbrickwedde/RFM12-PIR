@@ -121,8 +121,20 @@ int main(void) {
 			uiPir = uiNewPir;
 			WDTcounter = 0;
 			send();
+			wdt_reset();
+			_delay_ms(200);
+			send();
+			wdt_reset();
+			_delay_ms(200);
+			send();
 		} else if ((WDTcounter >= MAXCOUNT)) {
 			WDTcounter = 0;
+			send();
+			wdt_reset();
+			_delay_ms(200);
+			send();
+			wdt_reset();
+			_delay_ms(200);
 			send();
 		}
 
